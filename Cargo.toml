@@ -5,9 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+management-interface = []
+
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.4", features = ["derive"] }
 nix = { version = "0.28.0", features = ["poll", "fs"] }
 serde = { version = "1.0.199", features = ["serde_derive"] }
 serde_yaml = "0.9.34"
+uuid = { version = "1.8.0", features = ["v4", "fast-rng"] }
