@@ -62,7 +62,7 @@ pub enum NodeTrigger {
 
 #[derive(Serialize, Deserialize, PartialEq, Eq)]
 enum NodeOutputConfig {
-    File { name: Filename },
+    File { path: Filename },
     Stdout,
     Stderr,
 }
@@ -76,7 +76,7 @@ enum NodeInputConfig {
 #[derive(Serialize, Deserialize)]
 pub struct NodeErrorConfig {
     handling: NodeErrorHandling,
-    error_source: NodeErrorSource,
+    error_log: NodeErrorLog,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -86,10 +86,10 @@ pub enum NodeErrorHandling {
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum NodeErrorSource {
+pub enum NodeErrorLog {
     Silent,
     Stderr,
-    Logfile(Filename),
+    Logfile { path: Filename },
 }
 
 pub struct Node {
@@ -206,9 +206,9 @@ impl Node {
             })?;
 
         if !status.success() {
-            let error = match self.config.error_handling.error_source {
-                NodeErrorSource::Silent => None,
-                NodeErrorSource::Stderr => {
+            let error = match self.config.error_handling.error_log {
+                NodeErrorLog::Silent => None,
+                NodeErrorLog::Stderr => {
                     Some(std::fs::read_to_string(&stderr_resource.path).map_err(|e| {
                         NodeError::new_unconditional(
                             self,
@@ -220,7 +220,7 @@ impl Node {
                         )
                     })?)
                 }
-                NodeErrorSource::Logfile(ref path) => {
+                NodeErrorLog::Logfile { ref path } => {
                     Some(std::fs::read_to_string(path).map_err(|e| {
                         NodeError::new_unconditional(
                             self,
@@ -251,7 +251,7 @@ impl Node {
                     let resource = match config {
                         NodeOutputConfig::Stdout => stdout_resource.clone(),
                         NodeOutputConfig::Stderr => stderr_resource.clone(),
-                        NodeOutputConfig::File { name } => resource_builder
+                        NodeOutputConfig::File { path: name } => resource_builder
                             .new_resource_from_file(
                                 &PathBuf::from(name),
                                 &self.config.node_id,
@@ -362,7 +362,7 @@ fn write_test_config() {
                     },
                     error_handling: NodeErrorConfig {
                         handling: NodeErrorHandling::Fail,
-                        error_source: NodeErrorSource::Stderr,
+                        error_log: NodeErrorLog::Stderr,
                     },
                 },
                 NodeConfig {
@@ -379,7 +379,7 @@ fn write_test_config() {
                     typ: NodeType::OnInput,
                     error_handling: NodeErrorConfig {
                         handling: NodeErrorHandling::Retry { delay_ms: 1000 },
-                        error_source: NodeErrorSource::Stderr
+                        error_log: NodeErrorLog::Logfile { path: "dummy/path".into() }
                     },
                 },
                 NodeConfig {
@@ -391,7 +391,7 @@ fn write_test_config() {
                     typ: NodeType::Scheduled { schedule: NodeSchedule::Repeated { interval_ms: 60000 } },
                     error_handling: NodeErrorConfig {
                         handling: NodeErrorHandling::Retry { delay_ms: 1000 },
-                        error_source: NodeErrorSource::Stderr
+                        error_log: NodeErrorLog::Stderr
                     },
                 },
             ],
